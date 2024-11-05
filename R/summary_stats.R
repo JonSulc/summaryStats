@@ -144,7 +144,7 @@ infer_position <- function(summary_stats) {
     return(invisible(summary_stats))
   }
   position_encoding_columns <- intersect(
-    summary_stats_extra_column_names()$position_encoding$column_name,
+    summary_stats_extra_column_names$position_encoding$column_name,
     names(summary_stats)
   )
   if (length(position_encoding_columns) == 0) {
@@ -155,7 +155,7 @@ infer_position <- function(summary_stats) {
     ,
     pos := stringr::str_match(
       get(position_encoding_columns[1]),
-      summary_stats_extra_column_names()$position_encoding[
+      summary_stats_extra_column_names$position_encoding[
         position_encoding_columns[1],
         regex,
         on = "column_name"
@@ -183,11 +183,11 @@ infer_ref_alt_alleles <- function(
 
   cat("Reference and alternate allele columns not found, attempting to infer... ")
   allele_1 <- intersect(
-    summary_stats_extra_column_names()$allele_1,
+    summary_stats_extra_column_names$allele_1,
     colnames(summary_stats)
   )
   allele_2 <- intersect(
-    summary_stats_extra_column_names()$allele_2,
+    summary_stats_extra_column_names$allele_2,
     colnames(summary_stats)
   )
   if (length(allele_1) == 0 |
@@ -284,12 +284,18 @@ get_build <- function(summary_stats) {
 assign_current_as_build <- function(
     summary_stats,
     current_build = get_build(summary_stats),
-    columns = c("variant_id", "chr", "pos", "ref", "alt"),
+    columns = c("variant_id", "id", "chr", "pos", "start", "end") |>
+      intersect(names(summary_stats)),
     force = FALSE
 ) {
-  if (has_build_version(summary_stats, current_build) & !force) {
+  if (has_build_version(summary_stats, current_build, columns = columns) & !force) {
     return(invisible(summary_stats))
   }
+
+  if (!"variant_id" %in% names(summary_stats)) {
+    assign_variant_id_from_chr_pos_ref_alt(summary_stats, build = current_build)
+  }
+
   summary_stats[
     ,
     get_build_colnames(current_build, columns) := mget(columns)
@@ -297,9 +303,9 @@ assign_current_as_build <- function(
   invisible(summary_stats)
 }
 
-has_build_version <- function(summary_stats, build) {
+has_build_version <- function(summary_stats, build, columns) {
   all(
-    get_build_colnames(build) %in% names(summary_stats)
+    get_build_colnames(build, columns = columns) %in% names(summary_stats)
   )
 }
 

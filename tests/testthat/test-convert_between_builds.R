@@ -1,27 +1,110 @@
-library(quickcheck)
+query1 <- data.table::data.table(
+  variant_id = "test",
+  chr        = "chr3",
+  start      = 10042,
+  end        = 10515
+)
 
-test_that("Build conversion works", {
-  quickcheck::for_all(
-    summary_stats = data_frame_(
-      chr = integer_bounded(1, 22),
-      pos = integer_bounded(1, 1e6),
-      ref = character_letters(),
-      alt = character_letters(),
-      effect = quickcheck::double_(),
-      pval = double_bounded(1e-10, 1)
+query2 <- data.table::data.table(
+  variant_id = "test2",
+  chr        = "chr3",
+  start      = 10519,
+  end        = 12378
+)
+
+test_that("Converting does not change the original object", {
+  query1_bkp <- data.table::copy(query1)
+  calculate_converted_positions(
+    query1,
+    chain = chain_b38_b37,
+    target_build = "b37"
+  )
+  expect_equal(query1, query1_bkp)
+})
+
+test_that("Conversion matches rtracklayer::liftOver", {
+  for (query in list(query1, query2)) {
+    expect_equal(
+      calculate_converted_positions(
+        query,
+        chain = chain_b38_b37,
+        target_build = "b37"
+      )[
+        ,
+        .(chr, start, end)
+      ],
+      data.table::as.data.table(
+        rtracklayer::liftOver(
+          query[
+            ,
+            GenomicRanges::GRanges(
+              chr,
+              IRanges::IRanges(start, end)
+            )
+          ],
+          chain = chain_b38_b37
+        )
+      )[
+        order(start),
+        .(chr   = as.character(seqnames),
+          start = as.numeric(start),
+          end   = as.numeric(end))
+      ][
+        order(chr)
+      ]
+    )
+  }
+})
+
+test_that("Converting multiple ranges preserves order", {
+  expect_equal(
+    calculate_converted_positions(
+      rbind(query1, query2),
+      chain = chain_b38_b37,
+      target_build = "b37"
     ),
-    property = function(summary_stats) {
-      previous <- as_summary_stats(summary_stats, build = "b37")
-      capture.output(
-        summary_stats <- as_summary_stats(summary_stats, build = "b37") |>
-          convert_to_build("b38") |>
-          convert_to_build("b37"),
-        file = nullfile()
+    rbind(
+      calculate_converted_positions(
+        query1,
+        chain = chain_b38_b37,
+        target_build = "b37"
+      ),
+      calculate_converted_positions(
+        query2,
+        chain = chain_b38_b37,
+        target_build = "b37"
       )
+    )
+  )
+})
 
-      expect_equal(summary_stats[, .SD, .SDcols = c("variant_id", "chr", "pos", "ref", "alt")],
-                   previous[, .SD, .SDcols = c("variant_id", "chr", "pos", "ref", "alt")])
-    }
+summary_stats <- data.table::data.table(
+  chr = 3,
+  pos = 10042,
+  ref = "A",
+  alt = "C",
+  effect = 1,
+  pval = .5
+) |>
+  as_summary_stats(build = "b38")
+
+test_that("Converting to genomic ranges works", {
+  expect_true(
+    all(c("start", "end") %chin% names(convert_to_genomic_range(summary_stats)))
+  )
+})
+
+test_that("Converting summary stats works", {
+  expect_equal(
+    calculate_converted_positions(
+      summary_stats,
+      target_build = "b37",
+      current_build = "b38"
+    )[
+      ,
+      c(chr[[1]], pos[[1]])
+    ],
+    c("chr1", 249240559)
   )
 })
 
@@ -36,7 +119,7 @@ test_that("Converting with NAs works", {
       pval = 1
     ) |>
       as_summary_stats(build = "b38") |>
-      convert_to_build("b37")
+      calculate_converted_positions(chain_b38_b37, target_build = "b37")
   )
   expect_no_error(
     data.table::data.table(
@@ -48,7 +131,8 @@ test_that("Converting with NAs works", {
       pval = 1
     ) |>
       as_summary_stats(build = "b38") |>
-      convert_to_build("b37") |>
+      calculate_converted_positions(target_build = "b37",
+                                    current_build = "b38") |>
       suppressWarnings()
   )
 })
@@ -61,6 +145,6 @@ test_that("Missing SNPs in build conversion are handled properly", {
     pval = .5
   ) |>
     as_summary_stats()
-  expect_warning(capture.output(convert_to_build(summary_stats, "b37")),
+  expect_warning(capture.output(calculate_converted_positions(summary_stats, target_build = "b37")),
                  "no mapped pos")
 })

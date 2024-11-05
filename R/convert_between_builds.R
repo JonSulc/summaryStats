@@ -12,53 +12,6 @@ chain_b36_b38 <- "~/rcp_storage/common/Users/sulc/data/ucsc/hg18ToHg38.over.chai
 chain_b37_b36 <- "~/rcp_storage/common/Users/sulc/data/ucsc/hg19ToHg18.over.chain" |>
   rtracklayer::import.chain()
 
-#' @export
-convert_to_build <- function(
-    summary_stats,
-    build = "b38",
-    current_build = get_build(summary_stats),
-    chain = NULL,
-    force = FALSE
-) {
-  assign_current_as_build(summary_stats, current_build = current_build)
-
-  if (current_build == build) {
-    return(invisible(summary_stats))
-  }
-
-  if (has_build_version(summary_stats, build) & !force) {
-    summary_stats[
-      ,
-      c("variant_id", "chr", "pos") :=
-        mget(get_build_colnames(build, c("variant_id", "chr", "pos")))
-    ][]
-    return(invisible(summary_stats))
-  }
-
-  # There's no chain file for hg38 -> 36
-  if (is.null(chain)) {
-    if (current_build == "b38" & build == "b36") {
-      convert_to_build(summary_stats, current_build = "b38", build = "b37")
-      convert_to_build(summary_stats, current_build = "b37", build = "b36")
-      return(
-        invisible(summary_stats)
-      )
-    }
-    chain <- get_chain(from = current_build, to = build)
-  }
-
-  converted_positions <- calculate_converted_positions(summary_stats,
-                                                       chain,
-                                                       build)
-  summary_stats[
-    ,
-    names(converted_positions) := converted_positions
-  ][]
-  assign_current_as_build(summary_stats, build)
-
-  invisible(summary_stats)
-}
-
 
 get_chain <- function(from, to) {
   if (!paste(from, to) %in% c("b38 b37",
@@ -70,88 +23,184 @@ get_chain <- function(from, to) {
 }
 
 
-calculate_converted_positions <- function(
-    summary_stats,
-    chain,
-    build
+convert_to_genomic_range <- function(
+  summary_stats
 ) {
-  if (nrow(summary_stats) == 0) {
-    return(
-      data.table::data.table(
-        variant_id = character(0),
-        chr = character(0),
-        pos = numeric(0),
-        ref = character(0),
-        alt = character(0)
-      )
-    )
-  }
-  if (all(summary_stats[, is.na(chr)])) {
-    return(summary_stats)
+  summary_stats[
+    ,
+    .(start = pos,
+      end   = pos) |>
+      c(.SD),
+    .SDcols = -"pos"
+  ]
+}
+
+
+convert_genomic_range_to_summary_stats <- function(
+  genomic_range,
+  current_build
+) {
+  if (any(!is.na(genomic_range$chr))) {
+    if (genomic_range[, !all(start == end)]) {
+      stop("'start' and 'end' values do not match.")
+    }
   }
 
-  positions <- summary_stats[, .(chr, pos, ref, alt)]
-  positions[
-    is.na(chr) | is.na(pos),
-    c("chr", "pos") := NA
+  genomic_range[
+    ,
+    .(pos = start) |>
+      c(.SD),
+    .SDcols = -c("start", "end")
+  ] |>
+    assign_variant_id_from_chr_pos_ref_alt(build = current_build) |>
+    assign_current_as_build(current_build = current_build)
+}
+
+
+calculate_converted_positions <- function(
+    query,
+    target_build,
+    current_build = get_build(query),
+    chain = NULL,
+    ...
+) {
+  if (nrow(query) == 0) {
+    return(
+      query
+    )
+  }
+  if (all(query[, is.na(chr)])) {
+    return(query)
+  }
+  if (is.numeric(query$chr)) {
+    query <- copy(query)
+    query[, chr := paste0("chr", chr)]
+  }
+
+  if (!all(c("start", "end") %chin% names(query))) {
+    return(
+      convert_to_genomic_range(query) |>
+        calculate_converted_positions(target_build = target_build,
+                                      current_build = current_build,
+                                      chain = chain) |>
+        convert_genomic_range_to_summary_stats(target_build)
+    )
+  }
+
+  if (all(get_build_colnames(
+    build = target_build,
+    columns = c("chr", "start", "end")
+  ) %chin% colnames(query))) {
+    if (!all(get_build_colnames(
+      build = current_build,
+      columns = c("chr", "start", "end")
+    ) %chin% colnames(query))) {
+      query[
+        ,
+        get_build_colnames(
+          build = current_build,
+          columns = c("chr", "start", "end")
+        ) := c("chr", "start", "end")
+      ]
+    }
+    query[
+      ,
+      c("chr", "start", "end") := get_build_colnames(
+        build = target_build,
+        columns = c("chr", "start", "end")
+      )
+    ]
+    return(query)
+  }
+
+  if (is.null(chain)) {
+    # There's no chain for b38 -> b36...
+    if (current_build == "b38" & target_build == "b36") {
+      return(
+        calculate_converted_positions(
+          query,
+          target_build = "b37",
+          current_build = "b38",
+          ...
+        ) |>
+          calculate_converted_positions(
+            target_build = "b36",
+            current_build = "b37"
+          )
+      )
+    } else {
+      chain <- get(
+        sprintf("chain_%s_%s",
+                current_build,
+                target_build)
+      )
+    }
+  }
+
+  column_order <- data.table::copy(colnames(query))
+
+  query <- data.table::copy(query)[
+    is.na(chr) | is.na(start) | is.na(end),
+    c("chr", "start", "end") := NA
   ][
     ,
     # Positions are changed when applying by chr, need to be able to resort them
-    index := seq_len(nrow(positions))
+    index := seq_len(nrow(query))
   ][]
-  positions <- positions[
-    ,
-    c(.SD,
-      .(start = pos,
-        end   = pos))
-  ][
+
+  if (any(is.na(query$chr))) {
+    warning("Dropping ", query[is.na(chr), .N], " SNPs with invalid chr")
+  }
+
+  query <- query[
     !is.na(chr),
     data.table::foverlaps(
       .SD,
       get_chain_dt(chain, chr),
-      mult = "first"
+      ...
     )[
       ,
       .(
-        pos = data.table::fifelse(
+        start = data.table::fifelse(
           rev,
-          end - offset - (i.start - start),
-          i.start - offset
+          start - offset + end - data.table::fifelse(end < i.end, end, i.end),
+          data.table::fifelse(start < i.start, i.start, start) - offset
         ),
-        new_chr = chr,
-        ref = ref,
-        alt = alt,
-        index = index
-      )
+        end = data.table::fifelse(
+          rev,
+          start - offset + end - data.table::fifelse(start < i.start, i.start, start),
+          data.table::fifelse(end < i.end, end, i.end) - offset
+        ),
+        new_chr = chr
+      ) |>
+        c(.SD),
+      .SDcols = -c("chr", "start", "end", "width", "offset", "rev", "i.start", "i.end")
     ],
     by = chr
   ][
     ,
-    .(chr = new_chr,
-      pos = pos,
-      ref = ref,
-      alt = alt,
-      index = index)
+    chr := new_chr
   ][
     ,
-    c(.(variant_id = get_variant_id_from_chr_pos_ref_alt(.SD, build = build)),
-      .SD)
-  ][
-    data.table::data.table(index = seq_len(nrow(positions))) |>
-      cbind(positions[, .(ref, alt)]),
-    on = c("index", "ref", "alt")
-  ][
-    ,
-    -"index"
-  ]
+    new_chr := NULL
+  ][]
 
-  if (any(is.na(positions$variant_id))) {
-    warning(positions[is.na(variant_id), .N],
+  setorder(query, index, chr, start)
+
+  query[
+    ,
+    index := NULL
+  ][]
+
+  setcolorder(query, column_order)
+
+  if (any(is.na(query$chr))) {
+    warning(query[is.na(chr), .N],
             " SNP(s) have no mapped position in build ",
-            build)
+            target_build)
   }
 
-  positions
+  query
 }
 
 get_chain_dt <- function(chain, chr) {
