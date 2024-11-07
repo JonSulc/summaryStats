@@ -1,5 +1,34 @@
 #' @import data.table
 
+#' @title Retrieve summary statistics for a genome region from dbGaP on LISP
+#'   server
+#' @description Easy method to retrieve summary statistics from MVP and CHARGE
+#'   on LISP server.
+#' @param chromosome Specifies the chromosome for the region of interest,
+#'   specified either as the number alone (i.e., 1 or "1") or preceded by
+#'   "chr" (i.e., "chr1"). Can also be a data.frame or data.table, in which
+#'   case it must have (at least) three columns: "chr", "start", "end", each
+#'   row of which specifies a different region of interest.
+#' @param start Starting position of the region of interest.
+#' @param end End position of the region of interest.
+#' @param traits Vector of traits of interest, either keywords (e.g.,
+#'   "ejection fraction") or trait IDs (e.g., "HFpEF_EUR")
+#' @param source Cohort or consortium from which the data is to be loaded. Must
+#'   be one of "mvp" or "charge".
+#' @param build Specifies the genome build for the genomic regions of interest.
+#'   Can be one of "b38" (GRCh38/hg38), "b37" (GRCh37/hg19) or "b36"
+#'   (NCBI36/hg18).
+#'
+#' @returns A data.table containing the summary statistics of any of the
+#'   variants in the region(s) of interest loaded from the files corresponding
+#'   to the requested traits.
+#' @examples
+#' get_dbgap_associations(chromosome = 3,
+#'                        start = 123456,
+#'                        end = 133456,
+#'                        traits = "ejection fraction",
+#'                        source = "mvp")
+#'
 #' @export
 get_dbgap_associations <- function(
   chromosome,

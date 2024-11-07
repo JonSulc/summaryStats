@@ -10,7 +10,9 @@ cl_read_dbgap_file_template <- function(filename, source) {
 }
 
 cl_find_column_indices <- function(filename, source) {
-  cat("The following 'gzip: stdout: Broken pipe' is normal, don't @ me:")
+  if (source == "mvp") {
+    cat("The following 'gzip: stdout: Broken pipe' is normal, don't @ me:")
+  }
   summary_stats <- data.table::fread(
     cmd = sprintf("%s %s%s",
                   ifelse(source == "mvp", "zcat ", "head -n 2"),
