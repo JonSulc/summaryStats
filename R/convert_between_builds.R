@@ -11,6 +11,8 @@ chain_b36_b38 <- "~/rcp_storage/common/Users/sulc/data/ucsc/hg18ToHg38.over.chai
 # No file found for b38 -> b36, have to go through b37...
 chain_b37_b36 <- "~/rcp_storage/common/Users/sulc/data/ucsc/hg19ToHg18.over.chain" |>
   rtracklayer::import.chain()
+chain_b36_b37 <- "~/rcp_storage/common/Users/sulc/data/ucsc/hg18ToHg19.over.chain" |>
+  rtracklayer::import.chain()
 
 
 get_chain <- function(from, to) {

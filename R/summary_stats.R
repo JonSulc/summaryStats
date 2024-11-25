@@ -255,7 +255,7 @@ get_build <- function(summary_stats) {
     if ("variant_id_b38" %in% names(summary_stats)) return("b38")
     if ("variant_id_b37" %in% names(summary_stats)) return("b37")
     if ("variant_id_b36" %in% names(summary_stats)) return("b36")
-    stop("Build could not be inferred from empty variant_table.")
+    stop("Build could not be inferred from empty summary_stats.")
   }
 
   if (!("variant_id" %in% names(summary_stats)))

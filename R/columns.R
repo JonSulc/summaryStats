@@ -28,7 +28,8 @@ summary_stats_column_names <- list(
           "nea",
           "ALLELE0",
           "NEA",
-          "Noncoded_allele"),
+          "Noncoded_allele",
+          "noncoded_all"),
 
   alt = c("alt",
           "AssessedAllele",
@@ -41,7 +42,8 @@ summary_stats_column_names <- list(
           "Effect allele (EA)",
           "EA",
           "effallele",
-          "Coded_allele"),
+          "Coded_allele",
+          "coded_all"),
 
   pval = c("pval",
            "pval_nominal",

@@ -80,12 +80,18 @@ load_genomic_ranges_from_file <- function(filename,
                                           chr = 22,
                                           nsnps = 10000,
                                           source = c("mvp", "charge")) {
-  variants_dt <- filtered_fread_on_chr(filename,
-                                       chr = chr,
-                                       source = source,
-                                       nsnps = nsnps) |>
-    as_variant_table(build = "b38")
-  variants_dt[
+  summary_stats <- sprintf(
+    cl_read_dbgap_file_template(filename, source),
+    cl_variable_is(cl_find_column_indices(filename, source), "chr", chr)
+  ) |>
+    paste(
+      "| head -n",
+      nsnps
+    ) |>
+    data.table::fread(cmd = _) |>
+    as_summary_stats(build = "b38") # Arbitrary, ignored
+
+  summary_stats[
     ,
     .(chr, pos, ref, alt)
   ]
