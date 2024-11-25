@@ -64,6 +64,9 @@ calculate_converted_positions <- function(
     chain = NULL,
     ...
 ) {
+  if (target_build == current_build) {
+    return(query)
+  }
   if (nrow(query) == 0) {
     return(
       query

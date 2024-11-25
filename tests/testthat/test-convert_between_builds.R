@@ -1,23 +1,35 @@
 query1 <- data.table::data.table(
-  variant_id = "test",
   chr        = "chr3",
   start      = 10042,
   end        = 10515
-)
+) |>
+  new_genomic_ranges() |>
+  suppressWarnings()
 
 query2 <- data.table::data.table(
-  variant_id = "test2",
   chr        = "chr3",
   start      = 10519,
   end        = 12378
-)
+) |>
+  new_genomic_ranges() |>
+  suppressWarnings()
+
+test_that("Converting to the same build doesn't change the object", {
+  gr <- new_genomic_ranges(query1) |>
+    suppressWarnings()
+  expect_equal(
+    calculate_converted_positions(gr, "b36", "b36"),
+    gr
+  )
+})
 
 test_that("Converting does not change the original object", {
   query1_bkp <- data.table::copy(query1)
   calculate_converted_positions(
     query1,
-    chain = chain_b38_b37,
-    target_build = "b37"
+    target_build = "b37",
+    current_build = "b38",
+    chain = chain_b38_b37
   )
   expect_equal(query1, query1_bkp)
 })
@@ -27,8 +39,9 @@ test_that("Conversion matches rtracklayer::liftOver", {
     expect_equal(
       calculate_converted_positions(
         query,
-        chain = chain_b38_b37,
-        target_build = "b37"
+        target_build = "b37",
+        current_build = "b38",
+        chain = chain_b38_b37
       )[
         ,
         .(chr, start, end)
@@ -60,19 +73,22 @@ test_that("Converting multiple ranges preserves order", {
   expect_equal(
     calculate_converted_positions(
       rbind(query1, query2),
-      chain = chain_b38_b37,
-      target_build = "b37"
+      target_build = "b37",
+      current_build = "b38",
+      chain = chain_b38_b37
     ),
     rbind(
       calculate_converted_positions(
         query1,
-        chain = chain_b38_b37,
-        target_build = "b37"
+        target_build = "b37",
+        current_build = "b38",
+        chain = chain_b38_b37
       ),
       calculate_converted_positions(
         query2,
-        chain = chain_b38_b37,
-        target_build = "b37"
+        target_build = "b37",
+        current_build = "b38",
+        chain = chain_b38_b37
       )
     )
   )
@@ -119,7 +135,9 @@ test_that("Converting with NAs works", {
       pval = 1
     ) |>
       as_summary_stats(build = "b38") |>
-      calculate_converted_positions(chain_b38_b37, target_build = "b37")
+      calculate_converted_positions(chain_b38_b37,
+                                    target_build = "b37",
+                                    current_build = "b38")
   )
   expect_no_error(
     data.table::data.table(
@@ -145,6 +163,8 @@ test_that("Missing SNPs in build conversion are handled properly", {
     pval = .5
   ) |>
     as_summary_stats()
-  expect_warning(capture.output(calculate_converted_positions(summary_stats, target_build = "b37")),
+  expect_warning(capture.output(calculate_converted_positions(summary_stats,
+                                                              target_build = "b37",
+                                                              current_build = "b38")),
                  "no mapped pos")
 })
