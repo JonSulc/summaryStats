@@ -86,10 +86,10 @@ load_genomic_ranges_from_file <- function(filename,
   ) |>
     paste(
       "| head -n",
-      nsnps
+      nsnps + 1
     ) |>
     data.table::fread(cmd = _) |>
-    as_summary_stats(build = "b38") # Arbitrary, ignored
+    as_summary_stats(build = "b38") # Build is required but ignored
 
   summary_stats[
     ,
@@ -198,7 +198,17 @@ extract_line_number <- function(filename, skip, n = 3) {
 refsnp_db22 <- function() {
   if (!"refsnp_db22" %in% names(internal_data)) {
     cat("Loading SNP reference for genome inference...\n")
-    internal_data[["refsnp_db22"]] <- data.table::fread(data_path_refsnp_db22())
+    internal_data[["refsnp_db22"]] <- data.table::fread(data_path_refsnp_db22)
   }
   internal_data[["refsnp_db22"]]
+}
+
+
+update_charge_trait_builds <- function(charge_traits) {
+  all_charge_traits[
+    charge_traits$id,
+    build := charge_traits$build,
+    on = "id"
+  ]
+  data.table::fwrite(all_charge_traits, all_charge_traits_path)
 }

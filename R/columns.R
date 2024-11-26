@@ -19,7 +19,9 @@ summary_stats_column_names <- list(
           "Position",
           "POS",
           "ISmet_position",
-          "BP"),
+          "BP",
+          "Pos",
+          "Pos_b37"),
 
   ref = c("ref",
           "OtherAllele",
@@ -29,7 +31,8 @@ summary_stats_column_names <- list(
           "ALLELE0",
           "NEA",
           "Noncoded_allele",
-          "noncoded_all"),
+          "noncoded_all",
+          "Other_allele"),
 
   alt = c("alt",
           "AssessedAllele",

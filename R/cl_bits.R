@@ -1,12 +1,27 @@
 #' @import data.table
 
+file_is_csv <- function(filename) {
+  dt_output <- data.table::fread(filename, nrows = 1, verbose = TRUE) |>
+    capture.output() |>
+    stringr::str_match("sep='([^']+)'")
+  dt_output[!is.na(dt_output[, 1]), 2][1] == ","
+}
+
 cl_read_dbgap_file_template <- function(filename, source) {
   if (source == "mvp") {
     return(
-      sprintf("zcat %s | awk '%%s'", filename)
+      sprintf("zcat %s | awk%s '%%s'",
+              filename,
+              ifelse(file_is_csv(filename),
+                     " -F','",
+                     ""))
     )
   }
-  paste("awk -F',' '%s'", filename)
+  sprintf("awk%s '%%s' %s",
+          ifelse(file_is_csv(filename),
+                 " -F','",
+                 ""),
+          filename)
 }
 
 cl_find_column_indices <- function(filename, source) {
@@ -108,6 +123,7 @@ cl_awk_from_genomic_ranges <- function(
   column_names <- cl_find_column_indices(filename, source)
   sprintf(
     cl_read_dbgap_file_template(filename, source),
-    cl_variant_is_within_genomic_ranges(column_names, genomic_ranges)
+    cl_variant_is_within_genomic_ranges(column_names,
+                                        genomic_ranges)
   )
 }
