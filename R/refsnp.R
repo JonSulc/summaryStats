@@ -33,8 +33,10 @@ parse_single_snp_json <- function(single_snp_json, output_db_file = NULL) {
     chr = single_snp_json$primary_snapshot_data$placements_with_allele$alleles[is_genomic] |>
       lapply(\(alleles) alleles$allele$spdi$seq_id |>
                get_chr_from_seq_id()),
+    # SPDI notation acts as a 0-based interbase coordinate for the variant start
+    # PMID: 31738401
     pos = single_snp_json$primary_snapshot_data$placements_with_allele$alleles[is_genomic] |>
-      lapply(\(alleles) alleles$allele$spdi$position),
+      lapply(\(alleles) alleles$allele$spdi$position + 1),
     ref = single_snp_json$primary_snapshot_data$placements_with_allele$alleles[is_genomic] |>
       lapply(\(alleles) alleles$allele$spdi$deleted_sequence),
     alt = single_snp_json$primary_snapshot_data$placements_with_allele$alleles[is_genomic] |>
@@ -82,7 +84,9 @@ load_genomic_ranges_from_file <- function(filename,
                                           source = c("mvp", "charge")) {
   summary_stats <- sprintf(
     cl_read_dbgap_file_template(filename, source),
-    cl_variable_is(cl_find_column_indices(filename, source), "chr", chr)
+    cl_variable_is(cl_find_column_indices(filename, source),
+                   "chr", chr,
+                   values_are_quoted = are_values_quoted(filename))
   ) |>
     paste(
       "| head -n",
@@ -129,8 +133,15 @@ infer_build <- function(genomic_ranges,
                         refsnp_db,
                         return_build_match = FALSE) {
   genomic_ranges_builds <- refsnp_db[
+    rbind(
+      genomic_ranges[, .(chr = chr, pos = pos, ref = ref, alt = alt)],
+      genomic_ranges[, .(chr = chr, pos = pos, ref = alt, alt = ref)]
+    ),
+    on = c("chr", "pos", "ref", "alt"),
+    nomatch = NULL
+  ][
     genomic_ranges,
-    on = c("chr", "pos", "ref", "alt")
+    on = c("chr", "pos")
   ][
     is.na(build),
     build := "b36"
@@ -184,6 +195,9 @@ extract_db <- function(filename,
                 parse_single_line_to_snp,
                 output_db_file = output_db_file)
   }
+  data.table::fread(output_db_file) |>
+    unique() |>
+    data.table::fwrite(output_db_file)
 }
 
 # Used for testing and debugging
