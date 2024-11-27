@@ -87,7 +87,8 @@ cl_variable_is_within <- function(
   column_names,
   variable_name,
   minimum_values,
-  maximum_values
+  maximum_values,
+  values_are_quoted
 ) {
   c(
     sprintf(
@@ -143,7 +144,9 @@ cl_variant_is_within_single_genomic_range <- function(
                    "chr", chr,
                    values_are_quoted = values_are_quoted),
     cl_variable_is_within(column_names,
-                          "pos", starts, ends)
+                          "pos",
+                          starts, ends,
+                          values_are_quoted = values_are_quoted)
   )
 }
 
