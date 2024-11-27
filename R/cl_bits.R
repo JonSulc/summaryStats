@@ -25,8 +25,12 @@ check_quotes <- function(
   paste0("\\\"", value, "\\\"")
 }
 
-cl_read_dbgap_file_template <- function(filename, source) {
-  if (source == "mvp") {
+is_gzipped <- function(filename) {
+  stringr::str_detect(filename, "[.]gz$")
+}
+
+cl_read_dbgap_file_template <- function(filename) {
+  if (is_gzipped(filename)) {
     return(
       sprintf("zcat %s | awk%s '%%s'",
               filename,
@@ -42,15 +46,15 @@ cl_read_dbgap_file_template <- function(filename, source) {
           filename)
 }
 
-cl_find_column_indices <- function(filename, source) {
-  if (source == "mvp") {
+cl_find_column_indices <- function(filename) {
+  if (is_gzipped(filename)) {
     cat("The following 'gzip: stdout: Broken pipe' is normal, don't @ me:")
   }
   summary_stats <- data.table::fread(
     cmd = sprintf("%s %s%s",
-                  ifelse(source == "mvp", "zcat ", "head -n 2"),
+                  ifelse(is_gzipped(filename), "zcat ", "head -n 2"),
                   filename,
-                  ifelse(source == "mvp", " | head -n 2", ""))
+                  ifelse(is_gzipped(filename), " | head -n 2", ""))
   )
 
   column_names <- get_colnames(summary_stats)
@@ -152,12 +156,11 @@ cl_variant_is_within_single_genomic_range <- function(
 
 cl_awk_from_genomic_ranges <- function(
   filename,
-  source,
   genomic_ranges
 ) {
-  column_names <- cl_find_column_indices(filename, source)
+  column_names <- cl_find_column_indices(filename)
   sprintf(
-    cl_read_dbgap_file_template(filename, source),
+    cl_read_dbgap_file_template(filename),
     cl_variant_is_within_genomic_ranges(
       column_names,
       genomic_ranges,

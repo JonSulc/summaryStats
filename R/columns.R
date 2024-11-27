@@ -10,7 +10,9 @@ summary_stats_column_names <- list(
           "Chromosome",
           "CHR",
           "ISmet_chr",
-          "Chr"),
+          "Chr",
+          "Chromsome" # Yup...
+          ),
 
   pos = c("pos",
           "SNPPos",
@@ -72,7 +74,9 @@ summary_stats_column_names <- list(
              "Estimate_Effect",
              "genoxt2d.b", # MVP summary statistics, T2D complications
              "Effect",
-             "Est"),
+             "Est",
+             "Estimate_effect",
+             "Beta"),
 
   effect_se = c("effect_se",
                 "slope_se",

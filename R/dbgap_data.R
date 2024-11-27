@@ -153,7 +153,6 @@ load_dbgap_data <- function(
   summary_stats <- data.table::fread(
     cmd = cl_awk_from_genomic_ranges(
       filename,
-      source,
       genomic_ranges,
       ...
     )
