@@ -87,6 +87,25 @@ cl_variable_is <- function(
   )
 }
 
+cl_variable_is_one_of <- function(
+  column_names,
+  variable_name,
+  variable_values,
+  values_are_quoted
+) {
+  sprintf(
+    paste("BEGIN {split(\"%s\", vals);",
+          "for (i in vals) arr[vals[i]]}",
+          "{if ($%s in arr) print $0}"),
+    paste(
+      c(check_quotes(column_names[[variable_name]]$name, values_are_quoted),
+        variable_values),
+        collapse = " "
+    ),
+    column_names[[variable_name]]$index
+  )
+}
+
 cl_variable_is_within <- function(
   column_names,
   variable_name,

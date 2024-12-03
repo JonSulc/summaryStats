@@ -36,7 +36,8 @@ get_dbgap_associations <- function(
   end,
   traits,
   source = c("mvp", "charge"),
-  build = "b38"
+  build = "b38",
+  return_as_build = build
 ) {
   source <- match.arg(source, tolower(source))
   new_genomic_ranges(
@@ -46,9 +47,10 @@ get_dbgap_associations <- function(
     build      = build
   ) |>
     get_dbgap_associations_from_genomic_ranges(
-      traits        = traits,
-      source        = source,
-      current_build = build
+      traits          = traits,
+      source          = source,
+      current_build   = build,
+      return_as_build = return_as_build
     )
 }
 
@@ -57,7 +59,8 @@ get_dbgap_associations_from_genomic_ranges <- function(
     genomic_ranges,
     traits,
     source,
-    current_build = "b38",
+    current_build   = "b38",
+    return_as_build = current_build,
     ...
 ) {
   if (nrow(genomic_ranges) == 0) {
@@ -110,7 +113,7 @@ get_dbgap_associations_from_genomic_ranges <- function(
     ))
   ][]
 
-  traits[
+  traits <- traits[
     ,
     # Build needs to be dropped, otherwise is taken as argument in later
     # function calls from within the DT
@@ -132,6 +135,11 @@ get_dbgap_associations_from_genomic_ranges <- function(
     # Where there are no SNPs in common, the data is filled with NA
     !is.na(variant_id)
   ]
+  if (current_build == return_as_build) return(traits)
+  traits <- calculate_converted_positions(traits,
+                                          target_build = return_as_build,
+                                          current_build = current_build)
+  traits
 }
 
 
