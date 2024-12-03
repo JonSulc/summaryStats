@@ -76,8 +76,7 @@ get_dbgap_associations_from_genomic_ranges <- function(
     traits[
       (build == ""),
       build := infer_build_from_file(
-        filename,
-        source = source
+        filename
       ),
       by = filename
     ]
@@ -153,7 +152,7 @@ load_dbgap_data <- function(
   source <- match.arg(source)
 
   if (build == "") {
-    build <- infer_build_from_file(filename, source = source)
+    build <- infer_build_from_file(filename)
   }
 
   cat("Loading", filename, "\n")
@@ -241,8 +240,7 @@ find_dbgap_matching_traits <- function(
     found_traits[
       build == "" & !is.na(filename),
       c("build", "build_match") := infer_build_from_file(
-        file.path(path_prefix, filename),
-        source = source
+        file.path(path_prefix, filename)
       ),
       by = filename
     ][]

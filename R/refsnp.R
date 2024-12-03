@@ -80,11 +80,10 @@ get_chr_from_seq_id <- function(seq_id) {
 
 load_genomic_ranges_from_file <- function(filename,
                                           chr = 22,
-                                          nsnps = 10000,
-                                          source = c("mvp", "charge")) {
+                                          nsnps = 10000) {
   summary_stats <- sprintf(
     cl_read_dbgap_file_template(filename),
-    cl_variable_is(cl_find_column_indices(filename, source),
+    cl_variable_is(cl_find_column_indices(filename),
                    "chr", chr,
                    values_are_quoted = are_values_quoted(filename))
   ) |>
@@ -104,12 +103,10 @@ load_genomic_ranges_from_file <- function(filename,
 
 infer_build_from_file <- function(filename,
                                   nsnps = 10000,
-                                  source = c("mvp", "charge"),
                                   refsnp_db = refsnp_db22()) {
   cat("Inferring build from", filename, "\n")
   genomic_ranges <- load_genomic_ranges_from_file(filename,
-                                                  nsnps = nsnps,
-                                                  source = source)
+                                                  nsnps = nsnps)
 
   if (nrow(genomic_ranges) == 0) {
     warning("Unable to infer build from file.")
