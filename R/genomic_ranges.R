@@ -20,8 +20,8 @@ new_genomic_ranges <- function(
   } else {
     genomic_ranges <- data.table::data.table(
       chr   = chromosome,
-      start = start,
-      end   = end
+      start = as.numeric(start),
+      end   = as.numeric(end)
     )
   }
 
