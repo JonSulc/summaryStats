@@ -83,7 +83,7 @@ load_genomic_ranges_from_file <- function(filename,
                                           nsnps = 10000,
                                           source = c("mvp", "charge")) {
   summary_stats <- sprintf(
-    cl_read_dbgap_file_template(filename, source),
+    cl_read_dbgap_file_template(filename),
     cl_variable_is(cl_find_column_indices(filename, source),
                    "chr", chr,
                    values_are_quoted = are_values_quoted(filename))

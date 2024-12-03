@@ -1,7 +1,7 @@
 Package: summaryStats
 Type: Package
 Title: Handles summary statistics and genome build conversion
-Version: 0.5.1
+Version: 0.5.2
 Author: Jonathan Sulc
 Maintainer: Jonathan Sulc <jonathan.sulc@epfl.ch>
 Description: Handles the standardization of column names from different sources
