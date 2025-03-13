@@ -11,7 +11,8 @@ get_dbgap_associations(
   end,
   traits,
   source = c("mvp", "charge"),
-  build = "b38"
+  build = "b38",
+  return_as_build = build
 )
 }
 \arguments{

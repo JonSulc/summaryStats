@@ -95,6 +95,7 @@ get_dbgap_associations_from_genomic_ranges <- function(
   traits[
     build != "",
     traits_data := .(.(
+      # TODO Add try_catch here to print error as warning and move on
       load_dbgap_data(
         filename,
         genomic_ranges = genomic_ranges[[build]],

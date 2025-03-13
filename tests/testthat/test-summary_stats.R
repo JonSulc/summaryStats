@@ -1,6 +1,7 @@
+library(quickcheck)
+
 test_that("Initializing an empty summary_stats works", {
   expect_warning(as_summary_stats(data.table::data.table(), build = "b37")) |>
-    expect_warning() |>
     expect_warning()
 })
 
@@ -37,4 +38,25 @@ test_that("Standard initialization works with different column names", {
     ],
                  summary_stats)
   })
+})
+
+
+test_that("Getting column names works", {
+  all_colnames <- setNames(letters, paste0("V", 1:26)) |>
+    as.list()
+
+  for_all(
+    indices = integer_bounded(1, 26, len = 1:10),
+    property = function(indices) {
+      summary_stats <- matrix(0, ncol = length(indices), nrow = 5) |>
+        data.table::as.data.table() |>
+        setNames(letters[indices])
+
+      columns <- get_colnames(summary_stats, all_colnames)
+
+      expect_equal(columns[indices],
+                   as.list(setNames(letters[indices], paste0("V", indices))))
+      expect_true(all(sapply(columns[-indices], length) == 0))
+    }
+  )
 })

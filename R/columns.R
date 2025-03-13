@@ -23,7 +23,8 @@ summary_stats_column_names <- list(
           "ISmet_position",
           "BP",
           "Pos",
-          "Pos_b37"),
+          "Pos_b37",
+          "MapInfo"),
 
   ref = c("ref",
           "OtherAllele",

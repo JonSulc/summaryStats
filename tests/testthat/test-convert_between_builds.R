@@ -102,7 +102,8 @@ summary_stats <- data.table::data.table(
   effect = 1,
   pval = .5
 ) |>
-  as_summary_stats(build = "b38")
+  as_summary_stats(build = "b38") |>
+  suppressWarnings()
 
 test_that("Converting to genomic ranges works", {
   expect_true(
@@ -137,7 +138,8 @@ test_that("Converting with NAs works", {
       as_summary_stats(build = "b38") |>
       calculate_converted_positions(chain_b38_b37,
                                     target_build = "b37",
-                                    current_build = "b38")
+                                    current_build = "b38") |>
+      suppressWarnings()
   )
   expect_no_error(
     data.table::data.table(
@@ -162,7 +164,8 @@ test_that("Missing SNPs in build conversion are handled properly", {
     effect = 1,
     pval = .5
   ) |>
-    as_summary_stats()
+    as_summary_stats() |>
+    suppressWarnings()
   expect_warning(capture.output(calculate_converted_positions(summary_stats,
                                                               target_build = "b37",
                                                               current_build = "b38")),
