@@ -1,34 +1,132 @@
 #' @import data.table
-#' @importFrom stringr str_match str_to_upper
+#' @importFrom stringr str_match str_to_upper str_detect
 
 #' @export
-as_summary_stats <- function(
-    summary_stats,
-    build = get_build(summary_stats),
-    all_colnames = summary_stats_column_names,
-    complete_missing_stats = TRUE,
-    ignore_warning = FALSE,
-    required_columns = c("chr", "pos", "ref", "alt", "effect", "effect_se")
+validate_summary_stats <- function(
+  summary_stats
 ) {
-  if (!data.table::is.data.table(summary_stats)) {
-    summary_stats <- data.table::as.data.table(summary_stats)
-  } else {
-    summary_stats <- data.table::copy(summary_stats)
+  # stopifnot(inherits(summary_stats, "summary_stats"))
+  stopifnot(inherits(summary_stats, "data.table"))
+
+  # Check missing columns
+  missing_columns <- setdiff(
+    c("variant_id", "chr", "pos", "ref", "alt", "effect", "pval", "effect_se"),
+    colnames(summary_stats)
+  )
+  if (length(missing_columns) != 0) {
+    stop("Required columns are missing: ",
+         paste(missing_columns, collapse = ", "))
   }
 
-  assign_standardized_names(summary_stats,
-                            all_colnames = all_colnames,
-                            required_columns = required_columns)
+  # Check variant IDs
+  if (any(duplicated(summary_stats$variant_id)))
+    stop("Some variant_id values are not unique")
 
-  if (nrow(summary_stats) == 0) {
+  # Check chromosome
+  summary_stats[
+    !stringr::str_detect(chr,
+                         "^chr([0-9]{1,2}|[XY]|[mM][tT])$"),
+    {
+      if (.N != 0) {
+        stop("Chromosome format does not match expect (e.g., 'chr1'): ",
+             head(unique(chr)) |>
+               paste(collapse = ", "))
+      }
+    }
+  ]
+
+  # Check position
+  if (!is.numeric(summary_stats$pos))
+    stop("Position must be numeric")
+  if (!summary_stats[, all(pos %% 1 == 0)])
+    stop("Non-integer pos variable")
+  if (any(summary_stats$pos <= 0))
+    stop("Non-positive pos in summary statistics")
+
+  # Check alleles
+  summary_stats[
+    !stringr::str_detect(ref, "^[ACGT]+$"),
+    if (.N != 0)
+      stop("Invalid ref, e.g., ",
+           head(ref) |>
+             paste(collapse = ", "))
+  ]
+  summary_stats[
+    !stringr::str_detect(alt, "^[ACGT]+$"),
+    if (.N != 0)
+      stop("Invalid alt, e.g., ",
+           head(alt) |>
+             paste(collapse = ", "))
+  ]
+  summary_stats[
+    ref == alt,
+    if (.N != 0)
+      stop("Some alleles are identical for ref and alt")
+  ]
+
+  # Check p-value
+  if (!is.numeric(summary_stats$pval))
+    stop("Non-numeric pval variable")
+  if (any(summary_stats[, pval < 0]))
+    stop("Values of pval cannot be below 0")
+  if (any(summary_stats[, 1 < pval]))
+    stop("Values of pval cannot exceed 1")
+
+  # Check effect size
+  if (!is.numeric(summary_stats$effect))
+    stop("Non-numeric effect variable")
+
+  # Check effect SE
+  if (!is.numeric(summary_stats$effect_se))
+    stop("Non-numeric effect_se variable")
+  if (any(summary_stats$effect_se == 0))
+    stop("Some effect_se are 0")
+
+  invisible(summary_stats)
+}
+
+set_as_summary_stats <- function(
+  dt
+) {
+  stopifnot(data.table::is.data.table(dt))
+  stopifnot(data.table:::selfrefok(dt)==1)
+  data.table::setattr(dt, "class", unique(c("summary_stats", class(dt))))
+}
+
+
+#' @export
+is_summary_stats <- function(object) inherits(object, "summary_stats")
+
+new_summary_stats <- function(
+  dt,
+  build = get_build(dt),
+  all_colnames = summary_stats_column_names,
+  complete_missing_stats = TRUE,
+  ignore_warning = FALSE,
+  required_columns = c("chr", "pos", "ref", "alt", "effect", "pval")
+) {
+  if (!data.table::is.data.table(dt)) {
+    summary_statistics <- data.table::as.data.table(dt)
+    set_as_summary_stats(summary_statistics)
+  } else {
+    summary_statistics <- data.table::copy(dt)
+    set_as_summary_stats(summary_statistics)
+  }
+
+  assign_standardized_names(
+    summary_statistics,
+    all_colnames = all_colnames
+  )
+
+  if (nrow(summary_statistics) == 0) {
     if (!ignore_warning)
       warning("No variants in data.")
     missing_columns <- setdiff(
       required_columns,
-      colnames(summary_stats)
+      colnames(summary_statistics)
     )
     if (length(missing_columns) != 0)
-      summary_stats[
+      summary_statistics[
         ,
         (missing_columns) :=
           data.table::data.table(
@@ -37,35 +135,37 @@ as_summary_stats <- function(
             ref = character(0),
             alt = character(0),
             effect = numeric(0),
-            effect_se = numeric(0)
+            pval = numeric(0)
           )[, .SD, .SDcols = missing_columns]
       ]
   }
 
   if (complete_missing_stats) {
-    complete_missing_statistics(summary_stats)
+    complete_missing_statistics(summary_statistics)
   }
 
-  fix_missing_chr_pos_ref_alt(summary_stats)
+  fix_missing_chr_pos_ref_alt(summary_statistics)
 
   # Some MVP summary statistics do not directly list the effect allele...
-  infer_ref_alt_alleles(summary_stats)
-  capitalize_alleles(summary_stats)
+  infer_ref_alt_alleles(summary_statistics)
+  capitalize_alleles(summary_statistics)
 
-  if (!any(c("chr", "pos", "ref", "alt") %in% names(summary_stats))) {
-    assign_chr_pos_ref_alt_from_variant_id(summary_stats)
+  if (!any(c("chr", "pos", "ref", "alt") %in% names(summary_statistics))) {
+    assign_chr_pos_ref_alt_from_variant_id(summary_statistics)
   }
 
-  assign_correct_pos(summary_stats)
-  assign_correct_chr(summary_stats)
+  assign_correct_pos(summary_statistics)
+  assign_correct_chr(summary_statistics)
 
-  if (!("variant_id" %in% names(summary_stats))) {
-    assign_variant_id_from_chr_pos_ref_alt(summary_stats, build = build)
+  if (!("variant_id" %in% names(summary_statistics))) {
+    assign_variant_id_from_chr_pos_ref_alt(summary_statistics, build = build)
   }
 
-  assign_current_as_build(summary_stats, build)
+  assign_current_as_build(summary_statistics, build)
 
-  summary_stats
+  data.table::setcolorder(summary_statistics, c("variant_id", "chr", "pos", "ref", "alt"))
+
+  summary_statistics
 }
 
 assign_standardized_names <- function(
@@ -73,11 +173,13 @@ assign_standardized_names <- function(
     all_colnames = summary_stats_column_names,
     ...
 ) {
-  old_names <- get_colnames(summary_stats,
-                            all_colnames = all_colnames,
-                            ...)
+  old_names <- get_standard_colnames(
+    names(summary_stats),
+    all_colnames = all_colnames,
+    ...
+  )
 
-  if (length(unlist(old_names)) == 0) return()
+  if (length(unlist(old_names)) == 0) return(invisible(summary_stats))
 
   data.table::setnames(
     summary_stats,
@@ -93,7 +195,7 @@ complete_missing_statistics <- function(
   if (!"effect" %in% colnames(summary_stats)) {
     if (!"odds_ratio" %in% colnames(summary_stats)
         | !"pval" %in% colnames(summary_stats)) {
-      stop("No effect size column found, unable to use summary statistics for MR")
+      stop("No effect size column found, unable to use as summary statsistics.")
     }
     warning("No effect size column found, approximating standard effects from ",
             "odds ratio (PMID: 11113947), standard errors from the p-value.")
@@ -289,9 +391,9 @@ get_build <- function(summary_stats) {
 
 assign_current_as_build <- function(
     summary_stats,
-    current_build = get_build(summary_stats),
+    current_build = get_build(dt),
     columns = c("variant_id", "id", "chr", "pos", "start", "end") |>
-      intersect(names(summary_stats)),
+      intersect(names(dt)),
     force = FALSE
 ) {
   if (has_build_version(summary_stats, current_build, columns = columns) & !force) {
@@ -348,15 +450,15 @@ assign_correct_chr <- function(summary_stats) {
 }
 
 
-get_colnames <- function(
-  summary_stats,
-  all_colnames = summary_stats_column_names,
-  required_columns = NULL
+get_standard_colnames <- function(
+    data_colnames,
+    all_colnames = summary_stats_column_names,
+    required_columns = NULL
 ) {
   summary_stats_colnames <- lapply(
     all_colnames,
     intersect,
-    names(summary_stats)
+    data_colnames
   )
 
   if (any(sapply(summary_stats_colnames[required_columns], length) == 0)) {
@@ -365,19 +467,6 @@ get_colnames <- function(
               sapply(summary_stats_colnames[required_columns], length) == 0
             ] |> names() |> paste(collapse = ", "))
   }
-
-  # if (length(summary_stats_colnames$effect) == 0) {
-  #   warning("Missing 'effect' column")
-  # }
-  # if (length(summary_stats_colnames$variant_id) == 0
-  #     & (length(summary_stats_colnames$chr) == 0
-  #        | length(summary_stats_colnames$pos) == 0)) {
-  #   warning("Columns required for MR are missing:\n",
-  #           paste(
-  #             c("chr", "pos")[sapply(summary_stats_colnames[c("chr", "pos")], length) == 0],
-  #             collapse = ", "
-  #           ))
-  # }
 
   if (any(sapply(summary_stats_colnames, length) > 1)) {
     warning(sprintf(

@@ -2,9 +2,12 @@
 
 export(all_charge_traits)
 export(all_mvp_traits)
-export(as_summary_stats)
+export(assign_standardized_names)
+export(calculate_converted_positions)
 export(get_dbgap_associations)
+export(is_summary_stats)
 export(new_genomic_ranges)
+export(validate_summary_stats)
 import(data.table)
 importFrom(jsonlite,fromJSON)
 importFrom(rtracklayer,import.chain)

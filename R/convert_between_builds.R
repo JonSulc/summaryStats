@@ -59,6 +59,7 @@ convert_genomic_range_to_summary_stats <- function(
 }
 
 
+#' @export
 calculate_converted_positions <- function(
     query,
     target_build,

@@ -102,7 +102,7 @@ summary_stats <- data.table::data.table(
   effect = 1,
   pval = .5
 ) |>
-  as_summary_stats(build = "b38") |>
+  new_summary_stats(build = "b38") |>
   suppressWarnings()
 
 test_that("Converting to genomic ranges works", {

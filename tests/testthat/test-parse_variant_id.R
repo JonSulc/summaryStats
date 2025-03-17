@@ -11,7 +11,7 @@ test_that("Variant ID construction/parsing works", {
       pval = double_bounded(1e-10, 1)
     ),
     property = function(summary_stats) {
-      summary_stats <- as_summary_stats(summary_stats, build = "b38")
+      summary_stats <- new_summary_stats(summary_stats, build = "b38")
       summary_stats[
         ,
         variant_id := get_variant_id_from_chr_pos_ref_alt(summary_stats)
