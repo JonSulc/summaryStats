@@ -64,7 +64,8 @@ test_that("Conversion matches rtracklayer::liftOver", {
           end   = as.numeric(end))
       ][
         order(chr)
-      ]
+      ] |>
+        as_genomic_ranges()
     )
   }
 })
