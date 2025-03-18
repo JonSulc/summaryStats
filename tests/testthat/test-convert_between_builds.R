@@ -135,11 +135,41 @@ test_that("Converting with NAs works", {
       effect = 1,
       pval = 1
     ) |>
-      as_summary_stats(build = "b38") |>
+      new_summary_stats(build = "b38") |>
       calculate_converted_positions(chain_b38_b37,
                                     target_build = "b37",
-                                    current_build = "b38") |>
-      suppressWarnings()
+                                    current_build = "b38")
+  )
+  expect_equal(
+    data.table::data.table(
+      chr = NA,
+      pos = NA,
+      ref = "A",
+      alt = "C",
+      effect = 1,
+      pval = 1
+    ) |>
+      new_summary_stats(build = "b38") |>
+      calculate_converted_positions(chain_b38_b37,
+                                    target_build = "b37",
+                                    current_build = "b38"),
+    data.table::data.table(
+      variant_id = NA_character_,
+      chr = NA_character_,
+      pos = NA_integer_,
+      ref = "A",
+      alt = "C",
+      effect = 1,
+      pval = 1,
+      effect_se = Inf,
+      variant_id_b38 = NA_character_,
+      chr_b38 = NA_character_,
+      pos_b38 = NA_integer_,
+      variant_id_b37 = NA_character_,
+      chr_b37 = NA_character_,
+      pos_b37 = NA_integer_
+    ) |>
+      new_summary_stats(build = "b37")
   )
   expect_no_error(
     data.table::data.table(
@@ -150,7 +180,7 @@ test_that("Converting with NAs works", {
       effect = 1,
       pval = 1
     ) |>
-      as_summary_stats(build = "b38") |>
+      new_summary_stats(build = "b38") |>
       calculate_converted_positions(target_build = "b37",
                                     current_build = "b38") |>
       suppressWarnings()
@@ -164,8 +194,7 @@ test_that("Missing SNPs in build conversion are handled properly", {
     effect = 1,
     pval = .5
   ) |>
-    as_summary_stats() |>
-    suppressWarnings()
+    new_summary_stats()
   expect_warning(capture.output(calculate_converted_positions(summary_stats,
                                                               target_build = "b37",
                                                               current_build = "b38")),

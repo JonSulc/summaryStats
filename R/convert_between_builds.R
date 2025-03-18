@@ -76,6 +76,7 @@ calculate_converted_positions <- function(
     )
   }
   if (all(query[, is.na(chr)])) {
+    assign_current_as_build(query, target_build)
     return(query)
   }
   if (is.numeric(query$chr)) {

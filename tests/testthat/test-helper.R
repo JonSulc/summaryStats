@@ -15,3 +15,9 @@ test_that("Simulated stats initialize properly", {
       is.numeric(effect)
   ]))
 })
+
+test_that("Generating simulated summary_stats works", {
+  expect_no_error(fake_stats())
+  expect_no_error(fake_stats() |>
+                    validate_summary_stats())
+})

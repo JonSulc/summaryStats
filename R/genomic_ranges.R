@@ -1,6 +1,9 @@
 #' @import data.table
 
 #' @export
+is_genomic_ranges <- function(object) inherits(object, "genomic_ranges")
+
+#' @export
 new_genomic_ranges <- function(
     chromosome,
     start = NULL,
@@ -20,8 +23,8 @@ new_genomic_ranges <- function(
   } else {
     genomic_ranges <- data.table::data.table(
       chr   = chromosome,
-      start = as.numeric(start),
-      end   = as.numeric(end)
+      start = as.integer(start),
+      end   = as.integer(end)
     )
   }
 

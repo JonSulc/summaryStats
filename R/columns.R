@@ -94,22 +94,22 @@ summary_stats_column_names <- list(
 )
 
 summary_stats_extra_column_names <- list(
-  allele_1 = c("ISmet_allele1",
-               "Allele_1",
-               "Allele 1",
-               "Allele1",
-               "a1",
-               "A1",
-               "allele1"),
-  allele_2 = c("Allele_2",
-               "Allele 2",
-               "Allele2",
-               "a2",
-               "A2",
-               "allele2",
-               "ISmet_allele2"),
+  allele1 = c("Allele_1",
+              "Allele 1",
+              "Allele1",
+              "a1",
+              "A1",
+              "allele1",
+              "ISmet_allele1"),
+  allele2 = c("Allele_2",
+              "Allele 2",
+              "Allele2",
+              "a2",
+              "A2",
+              "allele2",
+              "ISmet_allele2"),
   position_encoding = data.table::data.table(
     column_name = c("MarkerName"),
-    regex       = c("^chr[^:]+:([0-9]+):[a-zA-Z]+$")
+    regex       = c("^chr[^:]+:([0-9]+):[a-zA-Z]")
   )
 )

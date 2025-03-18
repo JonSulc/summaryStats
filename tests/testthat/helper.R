@@ -49,6 +49,5 @@ fake_stats <- function(
       .SD,
       .(effect_se = abs(effect / qnorm(pval/2))))
   ]
-  set_as_summary_stats(summary_stats)
-  summary_stats
+  new_summary_stats(summary_stats, build = build)
 }

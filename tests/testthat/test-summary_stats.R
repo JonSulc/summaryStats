@@ -11,6 +11,7 @@ test_that("Validation detects any invalid entries", {
 
   summary_stats <- fake_stats()
   expect_no_error(validate_summary_stats(summary_stats))
+  expect_no_error(validate_summary_stats(summary_stats))
   expect_equal(validate_summary_stats(summary_stats), summary_stats)
   for (column in c("variant_id", "chr", "pos", "ref", "alt", "effect", "pval", "effect_se")) {
     expect_error(
@@ -41,24 +42,15 @@ test_that("Validation detects any invalid entries", {
     "chr"
   )
 
-  expect_no_error(
+  expect_error(
     summary_stats[
       ,
       c(.SD,
         .(pos = 1.)),
       .SDcols = -"pos"
     ] |>
-      validate_summary_stats()
-  )
-  expect_error(
-    summary_stats[
-      ,
-      c(.SD,
-        .(pos = -1)),
-      .SDcols = -"pos"
-    ] |>
       validate_summary_stats(),
-    "Non-positive"
+    "integer"
   )
   expect_error(
     summary_stats[
@@ -68,7 +60,7 @@ test_that("Validation detects any invalid entries", {
       .SDcols = -"pos"
     ] |>
       validate_summary_stats(),
-    "numeric"
+    "integer"
   )
   expect_error(
     summary_stats[
@@ -78,7 +70,17 @@ test_that("Validation detects any invalid entries", {
       .SDcols = -"pos"
     ] |>
       validate_summary_stats(),
-    "Non-integer"
+    "integer"
+  )
+  expect_error(
+    summary_stats[
+      ,
+      c(.SD,
+        .(pos = -1)),
+      .SDcols = -"pos"
+    ] |>
+      validate_summary_stats(),
+    "integer"
   )
 
   expect_error(
@@ -203,10 +205,12 @@ test_that("Regular initialization of summary_stats works", {
     effect = 1,
     pval = .05,
     effect_se = 1/abs(qnorm(.025)),
+    variant_id_b38 = "chr1_123_A_C_b38",
     chr_b38 = "chr1",
     pos_b38 = 123
   ) |>
-    data.table::setattr("class", c("summary_stats", "data.table", "data.frame"))
+    data.table::setattr("class", c("summary_stats", "data.table", "data.frame")) |>
+    data.table::setattr("build", "b38")
 
   expect_equal(
     new_summary_stats(dt, build = "b38"),
@@ -244,41 +248,10 @@ test_that("Initializing empty summary_stats works", {
   )
 })
 
-test_that("Getting column names works", {
-  expect_equal(
-    get_standard_colnames(letters[1:3],
-                          setNames(letters[1:3],
-                                   as.list(paste0("col", 1:3)))),
-    setNames(as.list(letters[1:3]),
-             paste0("col", 1:3))
-  )
-
-  for (i in 1:10) {
-    bad_names <- sapply(
-      sample(names(summary_stats_column_names),
-             sample(seq_along(summary_stats_column_names), 1)),
-      \(cname) sample(summary_stats_column_names[[cname]], 1)
-    )
-    standardized_colnames <- get_standard_colnames(bad_names)
-    expect_true(
-      all(names(standardized_colnames) == names(summary_stats_column_names))
-    )
-    expect_identical(
-      setdiff(unlist(standardized_colnames), bad_names),
-      character(0)
-    )
-    expect_true(
-      all(
-        sapply(names(unlist(standardized_colnames)),
-               \(cname) standardized_colnames[[cname]] %in% summary_stats_column_names[[cname]])
-      )
-    )
-  }
-})
-
 test_that("Standard initialization works with different column names", {
   summary_stats <- fake_stats() |>
     new_summary_stats()
+  summary_stats <- summary_stats[, .SD, .SDcol = !names(summary_stats) %like% "_b38$"]
   for (i in 1:10) {
     new_names <- sapply(
       colnames(summary_stats),
@@ -288,7 +261,111 @@ test_that("Standard initialization works with different column names", {
       setNames(summary_stats,
                new_names) |>
         new_summary_stats(),
+      summary_stats |>
+        new_summary_stats()
+    )
+  }
+})
+
+test_that("Inferring missing ref/alt alleles works", {
+  expect_equal(
+    data.table::data.table(
+      ref = "A",
+      alt = "C"
+    ) |>
+      infer_ref_alt_alleles(),
+    data.table::data.table(
+      ref = "A",
+      alt = "C"
+    )
+  )
+  expect_equal(
+    data.table::data.table(
+      a1 = c("A", "A"),
+      a2 = c("C", "C"),
+      alt = c("A", "C")
+    ) |>
+      infer_ref_alt_alleles(),
+    data.table::data.table(
+      ref = c("C", "A"),
+      alt = c("A", "C")
+    )
+  )
+  expect_equal(
+    data.table::data.table(
+      a1 = c("A", "A"),
+      a2 = c("C", "C"),
+      alt = c("C", "C")
+    ) |>
+      infer_ref_alt_alleles(),
+    data.table::data.table(
+      ref = c("A", "A"),
+      alt = c("C", "C")
+    )
+  )
+
+  expect_equal(
+    data.table::data.table(
+      a1 = "A",
+      a2 = "C"
+    ) |>
+      infer_ref_alt_alleles() |>
+      suppressWarnings(),
+    data.table::data.table(
+      ref = "A",
+      alt = "C",
+      assumed_ea_col = "a2"
+    )
+  )
+
+  expect_warning(
+    data.table::data.table(
+      a1 = "A",
+      a2 = "C"
+    ) |>
+      infer_ref_alt_alleles(),
+    "assuming"
+  )
+  expect_error(
+    data.table::data.table(
+      al1 = "A",
+      al2 = "C"
+    ) |>
+      infer_ref_alt_alleles(),
+    "Failed"
+  )
+})
+
+test_that("Completing summary stats with inferred alleles works", {
+  expect_equal(
+    data.table::data.table(
+      a1 = "A",
+      a2 = "C"
+    ) |>
+      infer_and_assign_ref_alt_alleles() |>
+      suppressWarnings(),
+    data.table::data.table(
+      a1 = "A",
+      a2 = "C",
+      ref = "A",
+      alt = "C",
+      assumed_ea_col = "a2"
+    )
+  )
+})
+
+test_that("Any missing information is inferred", {
+  summary_stats <- fake_stats()
+  for (cname in c("variant_id", "chr", "pos", "ref", "alt")) {
+    expect_equal(
+      summary_stats[, .SD, .SDcols = -cname] |>
+        new_summary_stats(build = "b38"),
       summary_stats
     )
   }
+  expect_equal(
+    summary_stats[, -c("chr", "pos", "ref", "alt")] |>
+      new_summary_stats(build = "b38"),
+    summary_stats
+  )
 })
