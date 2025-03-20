@@ -28,7 +28,7 @@ new_genomic_ranges <- function(
     assign_standardized_names(genomic_ranges)
   } else {
     genomic_ranges <- data.table::data.table(
-      chr   = chr,
+      chr   = as.character(chr),
       start = as.integer(start),
       end   = as.integer(end)
     )

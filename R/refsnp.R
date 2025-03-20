@@ -1,6 +1,7 @@
 #' @import data.table
 #' @importFrom jsonlite fromJSON
 #' @importFrom stringr str_match
+#' @import filterRead
 
 # RefSNP data is only loaded if necessary and saved in an internal environment
 internal_data <- new.env(parent = emptyenv())
@@ -81,18 +82,10 @@ get_chr_from_seq_id <- function(seq_id) {
 load_genomic_ranges_from_file <- function(filename,
                                           chr = 22,
                                           nsnps = 10000) {
-  summary_stats <- sprintf(
-    cl_read_dbgap_file_template(filename),
-    cl_variable_is(cl_find_column_indices(filename),
-                   "chr", chr,
-                   values_are_quoted = are_values_quoted(filename))
-  ) |>
-    paste(
-      "| head -n",
-      nsnps + 1
-    ) |>
-    data.table::fread(cmd = _) |>
-    as_summary_stats(build = "b38") # Build is required but ignored
+  summary_stats <- new_file_interface(filename) |>
+    head(nsnps) |>
+    new_summary_stats(build = "b38",
+                      required_columns = c()) # Build required but ignored
 
   summary_stats[
     ,

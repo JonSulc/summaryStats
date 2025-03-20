@@ -76,11 +76,11 @@ test_that("Validation detects any invalid entries", {
     summary_stats[
       ,
       c(.SD,
-        .(pos = -1)),
+        .(pos = -1L)),
       .SDcols = -"pos"
     ] |>
       validate_summary_stats(),
-    "integer"
+    "positive"
   )
 
   expect_error(
@@ -242,6 +242,40 @@ test_that("Regular initialization of summary_stats works", {
 })
 
 test_that("Initializing empty summary_stats works", {
+  expect_equal(
+    empty_summary_stats(),
+    set_as_summary_stats(
+      data.table::data.table(
+        variant_id = character(0),
+        chr = character(0),
+        pos = integer(0),
+        ref = character(0),
+        alt = character(0),
+        effect = numeric(0),
+        effect_se = numeric(0),
+        pval = numeric(0)
+      )
+    )
+  )
+  expect_equal(
+    empty_summary_stats(build = "b38"),
+    set_as_summary_stats(
+      data.table::data.table(
+        variant_id = character(0),
+        chr = character(0),
+        pos = integer(0),
+        ref = character(0),
+        alt = character(0),
+        effect = numeric(0),
+        effect_se = numeric(0),
+        pval = numeric(0),
+        variant_id_b38 = character(0),
+        chr_b38 = character(0),
+        pos_b38 = integer(0)
+      )
+    ) |>
+      data.table::setattr("build", "b38")
+  )
   expect_warning(
     new_summary_stats(data.table::data.table(),
                          build = "b37")

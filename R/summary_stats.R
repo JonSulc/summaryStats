@@ -10,7 +10,7 @@ validate_summary_stats <- function(
 
   # Check missing columns
   missing_columns <- setdiff(
-    c("variant_id", "chr", "pos", "ref", "alt", "effect", "pval", "effect_se"),
+    c("variant_id", "chr", "pos", "ref", "alt", "effect", "effect_se", "pval"),
     colnames(summary_stats)
   )
   if (length(missing_columns) != 0) {
@@ -38,10 +38,8 @@ validate_summary_stats <- function(
   # Check position
   if (!is.integer(summary_stats$pos))
     stop("Position must be an integer")
-  # if (!is.numeric(summary_stats$pos))
-  #   stop("Position must be numeric")
-  # if (!summary_stats[, all(pos %% 1 == 0)])
-  #   stop("Non-integer pos variable")
+  if (!summary_stats[!is.na(pos), all(0 < pos)])
+    stop("Position must be a positive integer")
 
   if (summary_stats[
     !is.na(pos),
@@ -107,13 +105,34 @@ set_as_summary_stats <- function(
 #' @export
 is_summary_stats <- function(object) inherits(object, "summary_stats")
 
+#' @export
+empty_summary_stats <- function(
+  build = NULL
+) {
+  summary_stats <- data.table::data.table(
+    variant_id = character(0),
+    chr = character(0),
+    pos = integer(0),
+    ref = character(0),
+    alt = character(0),
+    effect = numeric(0),
+    effect_se = numeric(0),
+    pval = numeric(0)
+  ) |>
+    set_as_summary_stats()
+  if (!is.null(build)) {
+    assign_current_as_build(summary_stats, build)
+  }
+  summary_stats
+}
+
+#' @export
 new_summary_stats <- function(
   dt,
   build = get_build(dt),
   all_colnames = summary_stats_column_names,
   complete_missing_stats = TRUE,
-  ignore_warning = FALSE,
-  required_columns = c("chr", "pos", "ref", "alt", "effect", "pval")
+  ignore_warning = FALSE
 ) {
   if (!data.table::is.data.table(dt)) {
     summary_stats <- data.table::as.data.table(dt)
@@ -131,23 +150,10 @@ new_summary_stats <- function(
   if (nrow(summary_stats) == 0) {
     if (!ignore_warning)
       warning("No variants in data.")
-    missing_columns <- setdiff(
-      required_columns,
-      colnames(summary_stats)
+
+    return(
+      empty_summary_stats(build = build)
     )
-    if (length(missing_columns) != 0)
-      summary_stats[
-        ,
-        (missing_columns) :=
-          data.table::data.table(
-            chr = character(0),
-            pos = numeric(0),
-            ref = character(0),
-            alt = character(0),
-            effect = numeric(0),
-            pval = numeric(0)
-          )[, .SD, .SDcols = missing_columns]
-      ]
   }
 
   if (complete_missing_stats) {
@@ -177,7 +183,7 @@ complete_missing_statistics <- function(
   if (!"effect" %in% colnames(summary_stats)) {
     if (!"odds_ratio" %in% colnames(summary_stats)
         | !"pval" %in% colnames(summary_stats)) {
-      stop("No effect size column found, unable to use as summary statsistics.")
+      stop("No effect size column found.")
     }
     warning("No effect size column found, approximating standard effects from ",
             "odds ratio (PMID: 11113947), standard errors from the p-value.")
