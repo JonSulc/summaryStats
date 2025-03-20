@@ -86,9 +86,9 @@ validate_summary_stats <- function(
   if (any(summary_stats$effect_se == 0))
     stop("Some effect_se are 0")
 
-  # if (data.table:::selfrefok(dt) != 1) {
-  #   warning("Internal self reference doesn't match")
-  # }
+  if (data.table:::selfrefok(summary_stats, verbose=FALSE)==0L) {
+    warning("Internal self reference doesn't match")
+  }
 
   invisible(summary_stats)
 }
