@@ -227,19 +227,6 @@ fix_missing_chr_pos_ref_alt <- function(
   # Some MVP summary statistics do not directly list the effect allele...
   infer_and_assign_ref_alt_alleles(summary_stats)
 }
-assign_correct_chr <- function(summary_stats) {
-  if (!is.character(summary_stats$chr)) {
-    summary_stats[
-      ,
-      chr := as.character(chr) # Force conversion in case DT is empty or NA
-    ][]
-  }
-  summary_stats[
-    substr(chr, 1, 3) != "chr",
-    chr := paste0("chr", chr)
-  ][]
-  invisible(summary_stats)
-}
 assign_variant_id_from_chr_pos_ref_alt <- function(summary_stats, ...) {
   summary_stats[
     ,

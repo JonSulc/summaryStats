@@ -80,12 +80,10 @@ get_chr_from_seq_id <- function(seq_id) {
 
 
 load_genomic_ranges_from_file <- function(filename,
-                                          chr = 22,
                                           nsnps = 10000) {
   summary_stats <- new_file_interface(filename) |>
     head(nsnps) |>
-    new_summary_stats(build = "b38",
-                      required_columns = c()) # Build required but ignored
+    new_summary_stats(build = "b38") # Build required but ignored
 
   summary_stats[
     ,
@@ -131,7 +129,7 @@ infer_build <- function(genomic_ranges,
     nomatch = NULL
   ][
     genomic_ranges,
-    on = c("chr", "pos")
+    on = c("chr", "pos", "ref", "alt")
   ][
     is.na(build),
     build := "b36"
@@ -140,6 +138,26 @@ infer_build <- function(genomic_ranges,
     .(n = .N,
       build_match = .N/nrow(genomic_ranges)),
     by = build
+  ]
+
+  genomic_ranges_builds[
+    ,
+    {
+      if (build[which.max(build_match)] == "b36") {
+        sprintf(
+          "Neither build b38 (%.1f%%) nor b37 (%.1f%%) were good matches,%s",
+          ifelse("b38" %in% build, 100 * build_match[build == "b38"], 0),
+          ifelse("b37" %in% build, 100 * build_match[build == "b37"], 0),
+          " defaulting to b36.\n"
+        ) |>
+          cat()
+      } else {
+        cat("The most likely genome build is",
+            sprintf("%s (%.1f%% match)\n",
+                    build[which.max(build_match)],
+                    100 * max(build_match)))
+      }
+    }
   ]
 
   if (!return_build_match) {
