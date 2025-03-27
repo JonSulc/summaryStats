@@ -209,8 +209,9 @@ test_that("Regular initialization of summary_stats works", {
     chr_b38 = "chr1",
     pos_b38 = 123
   ) |>
-    data.table::setattr("class", c("summary_stats", "data.table", "data.frame")) |>
-    data.table::setattr("build", "b38")
+    data.table::setattr("class", c("summary_stats", "genomic_positions", "data.table", "data.frame")) |>
+    data.table::setattr("build", "b38") |>
+    data.table::setattr("pos", "pos")
 
   expect_equal(
     new_summary_stats(dt, build = "b38"),
@@ -243,38 +244,39 @@ test_that("Regular initialization of summary_stats works", {
 
 test_that("Initializing empty summary_stats works", {
   expect_equal(
-    empty_summary_stats(),
-    set_as_summary_stats(
-      data.table::data.table(
-        variant_id = character(0),
-        chr = character(0),
-        pos = integer(0),
-        ref = character(0),
-        alt = character(0),
-        effect = numeric(0),
-        effect_se = numeric(0),
-        pval = numeric(0)
-      )
-    )
+    empty_summary_stats() |>
+      suppressWarnings(),
+    data.table::data.table(
+      variant_id = character(0),
+      chr = character(0),
+      pos = integer(0),
+      ref = character(0),
+      alt = character(0),
+      effect = numeric(0),
+      effect_se = numeric(0),
+      pval = numeric(0)
+    ) |>
+      new_summary_stats(build = "b38") |>
+      suppressWarnings()
   )
   expect_equal(
-    empty_summary_stats(build = "b38"),
-    set_as_summary_stats(
-      data.table::data.table(
-        variant_id = character(0),
-        chr = character(0),
-        pos = integer(0),
-        ref = character(0),
-        alt = character(0),
-        effect = numeric(0),
-        effect_se = numeric(0),
-        pval = numeric(0),
-        variant_id_b38 = character(0),
-        chr_b38 = character(0),
-        pos_b38 = integer(0)
-      )
+    empty_summary_stats(build = "b38") |>
+      suppressWarnings(),
+    data.table::data.table(
+      variant_id = character(0),
+      chr = character(0),
+      pos = integer(0),
+      ref = character(0),
+      alt = character(0),
+      effect = numeric(0),
+      effect_se = numeric(0),
+      pval = numeric(0),
+      variant_id_b38 = character(0),
+      chr_b38 = character(0),
+      pos_b38 = integer(0)
     ) |>
-      data.table::setattr("build", "b38")
+      new_summary_stats() |>
+      suppressWarnings()
   )
   expect_warning(
     new_summary_stats(data.table::data.table(),

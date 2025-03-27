@@ -6,22 +6,32 @@ validate_chr <- function(x) UseMethod("validate_chr")
 validate_pos <- function(x) UseMethod("validate_pos")
 #' @export
 validate_start_end <- function(x) UseMethod("validate_start_end")
-is_positive_integer <- function(x, cnames) {
-  x_is_positive <- lapply(cnames, \(cname) {
-    x[
-      !is.na(get(cname)),
-      all(0 < get(cname))
-    ]
-  }) |>
-    unlist()
+are_only_positive_integers <- function(x, cnames) {
+  stopifnot(data.table::is.data.table(x))
+  stopifnot(all(cnames %in% names(x)))
+  x_is_positive <- x[
+    ,
+    !sapply(mget(cnames), is_any_non_positive)
+  ]
   x_is_integer <- sapply(cnames, \(cname) is.integer(x[[cname]])) |>
     unlist()
   if (!(all(c(x_is_integer & x_is_positive)))) {
-    stop("All position values (",
-         sprintf("'%s'", cnames) |> paste(collapse = ", "),
-         ") must be positive integers")
+    stop("All position values must be positive integers",
+         " (",
+         sprintf("'%s'", cnames[!x_is_integer | !x_is_positive]) |> paste(collapse = ", "),
+         " contain non-conform values)")
   }
   invisible(x)
+}
+
+is_any_non_positive <- function(x, default = FALSE) {
+  if (all(is.na(x))) return(default)
+  x[!is.na(x)] <= 0
+}
+
+convert_to_dt <- function(dt) {
+  if (data.table::is.data.table(dt)) return(data.table::copy(dt))
+  data.table::as.data.table(dt)
 }
 
 assign_standardized_names <- function(
@@ -46,6 +56,7 @@ assign_standardized_names <- function(
 }
 
 assign_correct_chr <- function(summary_stats) {
+  stopifnot("chr" %in% colnames(summary_stats))
   if (!is.character(summary_stats$chr)) {
     summary_stats[
       ,
@@ -57,4 +68,25 @@ assign_correct_chr <- function(summary_stats) {
     chr := paste0("chr", chr)
   ][]
   invisible(summary_stats)
+}
+
+assign_correct_pos <- function(genomic_positions, position_columns) {
+  stopifnot(all(position_columns %in% colnames(genomic_positions)))
+  if (any(genomic_positions[,
+                            sapply(.SD, is_any_non_positive),
+                            .SDcols = position_columns])) {
+    warning("Some position values were not positive, converted to NA")
+  }
+  genomic_positions[
+    ,
+    (position_columns) := lapply(.SD, make_positive_integer),
+    .SDcols = position_columns
+  ][]
+  data.table::setattr(genomic_positions, "pos", position_columns)
+}
+
+make_positive_integer <- function(x) {
+  x <- as.integer(x)
+  x[x <= 0L] <- NA_integer_
+  x
 }

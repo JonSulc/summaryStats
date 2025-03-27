@@ -1,4 +1,5 @@
 #' @import data.table
+#' @import filterRead
 #' @importFrom stringr str_match str_to_upper str_detect
 
 #' @export
@@ -93,21 +94,11 @@ validate_summary_stats <- function(
   invisible(summary_stats)
 }
 
-set_as_summary_stats <- function(
-  dt
-) {
-  stopifnot(data.table::is.data.table(dt))
-  stopifnot(data.table:::selfrefok(dt)==1)
-  data.table::setattr(dt, "class", unique(c("summary_stats", class(dt))))
-}
-
-
 #' @export
 is_summary_stats <- function(object) inherits(object, "summary_stats")
 
-#' @export
 empty_summary_stats <- function(
-  build = NULL
+  build = "b38"
 ) {
   summary_stats <- data.table::data.table(
     variant_id = character(0),
@@ -118,12 +109,17 @@ empty_summary_stats <- function(
     effect = numeric(0),
     effect_se = numeric(0),
     pval = numeric(0)
-  ) |>
-    set_as_summary_stats()
+  )
+
   if (!is.null(build)) {
     assign_current_as_build(summary_stats, build)
   }
-  summary_stats
+  new_genomic_positions(
+    summary_stats,
+    build = build,
+    position_columns = "pos",
+    class = "summary_stats"
+  )
 }
 
 #' @export
@@ -132,25 +128,15 @@ new_summary_stats <- function(
   build = get_build(dt),
   all_colnames = summary_stats_column_names,
   complete_missing_stats = TRUE,
-  ignore_warning = FALSE
+  ignore_warning = FALSE,
+  ...
 ) {
-  if (!data.table::is.data.table(dt)) {
-    summary_stats <- data.table::as.data.table(dt)
-    set_as_summary_stats(summary_stats)
-  } else {
-    summary_stats <- data.table::copy(dt)
-    set_as_summary_stats(summary_stats)
-  }
-
-  assign_standardized_names(
-    summary_stats,
-    all_colnames = all_colnames
-  )
+  summary_stats <- convert_to_dt(dt) |>
+    assign_standardized_names(
+      all_colnames = all_colnames
+    )
 
   if (nrow(summary_stats) == 0) {
-    if (!ignore_warning)
-      warning("No variants in data.")
-
     return(
       empty_summary_stats(build = build)
     )
@@ -174,7 +160,25 @@ new_summary_stats <- function(
 
   validate_summary_stats(summary_stats)
 
-  summary_stats
+  new_genomic_positions(
+    summary_stats,
+    build = build,
+    position_columns = "pos",
+    ...,
+    class = "summary_stats"
+  )
+}
+
+#' @export
+load_summary_stats <- function(
+  filename,
+  filter,
+  column_names = summary_stats_column_names
+) {
+  new_file_interface(
+    filename,
+    column_names = column_names
+  )[!!rlang::enexpr(filter)]
 }
 
 complete_missing_statistics <- function(
